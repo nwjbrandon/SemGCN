@@ -73,7 +73,7 @@ def main(args):
     keypoints = create_2d_data(path.join('data', 'data_2d_' + args.dataset + '_' + args.keypoints + '.npz'), dataset)
 
     cudnn.benchmark = True
-    device = torch.device("cuda")
+    device = torch.device("mps")
 
     # Create model
     print("==> Creating model...")

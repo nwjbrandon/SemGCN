@@ -87,7 +87,7 @@ def main(args):
 
     stride = args.downsample
     cudnn.benchmark = True
-    device = torch.device("cuda")
+    device = torch.device("mps")
 
     # Create model
     print("==> Creating model...")
