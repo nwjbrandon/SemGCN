@@ -43,8 +43,8 @@ def parse_args():
     parser.add_argument('-z', '--hid_dim', default=128, type=int, metavar='N', help='num of hidden dimensions')
     parser.add_argument('-b', '--batch_size', default=64, type=int, metavar='N',
                         help='batch size in terms of predicted frames')
-    parser.add_argument('-e', '--epochs', default=100, type=int, metavar='N', help='number of training epochs')
-    parser.add_argument('--num_workers', default=8, type=int, metavar='N', help='num of workers for data loading')
+    parser.add_argument('-e', '--epochs', default=1, type=int, metavar='N', help='number of training epochs')
+    parser.add_argument('--num_workers', default=0, type=int, metavar='N', help='num of workers for data loading')
     parser.add_argument('--lr', default=1.0e-3, type=float, metavar='LR', help='initial learning rate')
     parser.add_argument('--lr_decay', type=int, default=100000, help='num of steps of learning rate decay')
     parser.add_argument('--lr_gamma', type=float, default=0.96, help='gamma of learning rate decay')
@@ -93,7 +93,7 @@ def main(args):
 
     stride = args.downsample
     cudnn.benchmark = True
-    device = torch.device("cuda")
+    device = torch.device("mps")
 
     # Create model
     print("==> Creating model...")
@@ -210,7 +210,14 @@ def train(data_loader, model_pos, criterion, optimizer, device, lr_init, lr_now,
     end = time.time()
 
     bar = Bar('Train', max=len(data_loader))
-    for i, (targets_3d, inputs_2d, _) in enumerate(data_loader):
+    
+    train_2d_poses = []
+    train_3d_poses = []
+    train_actions = []
+    for i, (targets_3d, inputs_2d, actions) in enumerate(data_loader):
+        train_2d_poses.append(inputs_2d.cpu().numpy())
+        train_3d_poses.append(targets_3d.cpu().numpy())
+        train_actions.append(actions)
         # Measure data loading time
         data_time.update(time.time() - end)
         num_poses = targets_3d.size(0)
@@ -242,6 +249,16 @@ def train(data_loader, model_pos, criterion, optimizer, device, lr_init, lr_now,
         bar.next()
 
     bar.finish()
+    train_2d_poses = np.concatenate(train_2d_poses)
+    train_3d_poses = np.concatenate(train_3d_poses)
+    train_actions = np.concatenate(train_actions)
+    print(train_2d_poses.shape)
+    print(train_3d_poses.shape)
+    print(train_actions.shape)
+    np.save("train_2d_poses.npy", train_2d_poses)
+    np.save("train_3d_poses.npy", train_3d_poses)
+    np.save("train_actions.npy", train_actions)
+
     return epoch_loss_3d_pos.avg, lr_now, step
 
 
@@ -256,8 +273,14 @@ def evaluate(data_loader, model_pos, device):
     model_pos.eval()
     end = time.time()
 
+    train_2d_poses = []
+    train_3d_poses = []
+    train_actions = []
     bar = Bar('Eval ', max=len(data_loader))
-    for i, (targets_3d, inputs_2d, _) in enumerate(data_loader):
+    for i, (targets_3d, inputs_2d, actions) in enumerate(data_loader):
+        train_2d_poses.append(inputs_2d.cpu().numpy())
+        train_3d_poses.append(targets_3d.cpu().numpy())
+        train_actions.append(actions)
         # Measure data loading time
         data_time.update(time.time() - end)
         num_poses = targets_3d.size(0)
@@ -280,6 +303,15 @@ def evaluate(data_loader, model_pos, device):
         bar.next()
 
     bar.finish()
+    train_2d_poses = np.concatenate(train_2d_poses)
+    train_3d_poses = np.concatenate(train_3d_poses)
+    train_actions = np.concatenate(train_actions)
+    print(train_2d_poses.shape)
+    print(train_3d_poses.shape)
+    print(train_actions.shape)
+    np.save("test_2d_poses.npy", train_2d_poses)
+    np.save("test_3d_poses.npy", train_3d_poses)
+    np.save("test_actions.npy", train_actions)
     return epoch_loss_3d_pos.avg, epoch_loss_3d_pos_procrustes.avg
 
 
